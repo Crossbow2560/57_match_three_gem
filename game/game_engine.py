@@ -1,6 +1,8 @@
 import pygame
 from game.board import Board, GRID_SIZE, TILE_SIZE
 
+HINT_DELAY_MS = 5000
+
 
 class GameEngine:
     def __init__(self, width, height):
@@ -14,8 +16,16 @@ class GameEngine:
         self.font_big = pygame.font.SysFont(None, 48)
         self.font_small = pygame.font.SysFont(None, 24)
         self.combo_text_until = 0
+        self.last_input_time = pygame.time.get_ticks()
+        self.hint_searched = False
+
+    def register_input(self):
+        self.last_input_time = pygame.time.get_ticks()
+        self.hint_searched = False
+        self.board.hint = None
 
     def handle_click(self, mouse_pos):
+        self.register_input()
         if self.board.is_game_over() or self.board.is_animating():
             return
 
@@ -41,9 +51,16 @@ class GameEngine:
     def reset(self):
         self.board.reset()
         self.combo_text_until = 0
+        self.register_input()
 
     def update(self):
         self.board.update()
+
+        if self.board.is_animating() or self.board.is_game_over():
+            self.register_input()
+        elif not self.hint_searched and pygame.time.get_ticks() - self.last_input_time > HINT_DELAY_MS:
+            self.board.hint = self.board.find_hint()
+            self.hint_searched = True
 
     def render(self, screen):
         screen.fill((32, 34, 40))

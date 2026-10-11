@@ -48,6 +48,7 @@ class Board:
         self.moves_remaining = max_moves
         self.last_combo = 0
         self.blasts = []
+        self.hint = None
         self.reset()
 
     def reset(self):
@@ -55,6 +56,7 @@ class Board:
         self.moves_remaining = self.max_moves
         self.selected = None
         self.blasts = []
+        self.hint = None
         for r in range(GRID_SIZE):
             for c in range(GRID_SIZE):
                 color = random.choice(GEM_COLORS)
@@ -229,6 +231,20 @@ class Board:
         self.score += self.resolve_matches(swapped=(pos1, pos2))
         return True
 
+    def find_hint(self):
+        for r in range(GRID_SIZE):
+            for c in range(GRID_SIZE):
+                for dr, dc in ((0, 1), (1, 0)):
+                    r2, c2 = r + dr, c + dc
+                    if r2 >= GRID_SIZE or c2 >= GRID_SIZE:
+                        continue
+                    self.swap_gems((r, c), (r2, c2))
+                    has_match = bool(self.find_matches())
+                    self.swap_gems((r, c), (r2, c2))
+                    if has_match:
+                        return (r, c), (r2, c2)
+        return None
+
     def is_game_over(self):
         return self.score >= self.target_score or self.moves_remaining <= 0
 
@@ -277,6 +293,9 @@ class Board:
                         surface, (255, 255, 255), sel_rect, width=4, border_radius=10
                     )
 
+        if self.hint:
+            self.render_hint(surface)
+
         now = pygame.time.get_ticks()
         for kind, index, start in self.blasts:
             alpha = max(0, int(200 * (1 - (now - start) / 400)))
@@ -287,6 +306,27 @@ class Board:
             flash = pygame.Surface(rect.size, pygame.SRCALPHA)
             flash.fill((255, 255, 255, alpha))
             surface.blit(flash, rect.topleft)
+
+    def render_hint(self, surface):
+        pulse = (math.sin(pygame.time.get_ticks() / 180) + 1) / 2
+        ring_color = tuple(int(a + (b - a) * pulse) for a, b in zip((255, 190, 0), (255, 255, 255)))
+        grow = int(4 * pulse)
+        for r, c in self.hint:
+            rect = pygame.Rect(
+                self.offset_x + c * TILE_SIZE + 2,
+                self.offset_y + r * TILE_SIZE + 2,
+                TILE_SIZE - 4,
+                TILE_SIZE - 4,
+            )
+            shimmer = pygame.Surface(rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(
+                shimmer, (255, 255, 255, int(60 + 100 * pulse)), shimmer.get_rect(), border_radius=10
+            )
+            surface.blit(shimmer, rect.topleft)
+
+            ring = rect.inflate(4 + grow * 2, 4 + grow * 2)
+            pygame.draw.rect(surface, (0, 0, 0), ring.inflate(6, 6), width=3, border_radius=15)
+            pygame.draw.rect(surface, ring_color, ring, width=5, border_radius=12)
 
     def render_special(self, surface, gem, tile_rect):
         pulse = (math.sin(pygame.time.get_ticks() / 150) + 1) / 2
