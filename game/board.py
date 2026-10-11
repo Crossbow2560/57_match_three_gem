@@ -44,6 +44,7 @@ class Board:
         self.selected = None
         self.score = 0
         self.moves_remaining = max_moves
+        self.last_combo = 0
         self.reset()
 
     def reset(self):
@@ -58,6 +59,7 @@ class Board:
                 self.grid[r][c] = gem
 
         self.resolve_matches()
+        self.last_combo = 0
 
     def is_animating(self):
         for r in range(GRID_SIZE):
@@ -133,16 +135,19 @@ class Board:
                 self.grid[r][c] = gem
 
     def resolve_matches(self):
-        total_cleared = 0
+        points = 0
+        combo = 0
         while True:
             matches = self.find_matches()
             if not matches:
                 break
-            total_cleared += len(matches)
+            combo += 1
+            points += len(matches) * 10 * combo
             for r, c in matches:
                 self.grid[r][c] = None
             self.drop_and_refill()
-        return total_cleared
+        self.last_combo = combo
+        return points
 
     def process_swap(self, pos1, pos2):
         if not self.is_adjacent(pos1, pos2) or self.is_game_over() or self.is_animating():
@@ -158,8 +163,7 @@ class Board:
             self.swap_gems(pos1, pos2)
             return False
 
-        cleared = self.resolve_matches()
-        self.score += cleared * 10
+        self.score += self.resolve_matches()
         return True
 
     def is_game_over(self):

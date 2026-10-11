@@ -13,6 +13,7 @@ class GameEngine:
 
         self.font_big = pygame.font.SysFont(None, 48)
         self.font_small = pygame.font.SysFont(None, 24)
+        self.combo_text_until = 0
 
     def handle_click(self, mouse_pos):
         if self.board.is_game_over() or self.board.is_animating():
@@ -33,11 +34,13 @@ class GameEngine:
                 if prev_selected == (row, col):
                     self.board.selected = None
                 else:
-                    self.board.process_swap(prev_selected, (row, col))
+                    if self.board.process_swap(prev_selected, (row, col)) and self.board.last_combo > 1:
+                        self.combo_text_until = pygame.time.get_ticks() + 1500
                     self.board.selected = None
 
     def reset(self):
         self.board.reset()
+        self.combo_text_until = 0
 
     def update(self):
         self.board.update()
@@ -53,6 +56,12 @@ class GameEngine:
         )
         hud_surf = self.font_small.render(hud_text, True, (80, 220, 180))
         screen.blit(hud_surf, (self.width // 2 - hud_surf.get_width() // 2, 55))
+
+        if pygame.time.get_ticks() < self.combo_text_until:
+            combo_surf = self.font_small.render(
+                f"COMBO x{self.board.last_combo}!", True, (255, 210, 80)
+            )
+            screen.blit(combo_surf, (self.width // 2 - combo_surf.get_width() // 2, 82))
 
         self.board.render(screen)
 
